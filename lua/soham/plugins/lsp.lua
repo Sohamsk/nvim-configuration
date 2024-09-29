@@ -14,19 +14,46 @@ return {
 	},
 	config = function()
 		require("mason").setup()
+        local cmp_lsp = require("cmp_nvim_lsp")
 		require("mason-lspconfig").setup {
 			ensure_installed = {
 				"lua_ls",
-				"rust_analyzer"
+				"rust_analyzer",
+                "clangd"
 			},
 		}
-        local capabilities = require('cmp_nvim_lsp').default_capabilities()
+        local capabilities = vim.tbl_deep_extend(
+            "force",
+            {},
+            vim.lsp.protocol.make_client_capabilities(),
+            cmp_lsp.default_capabilities())
 		local handlers = {
 			function (server_name)
 				require("lspconfig")[server_name].setup {
                     capabilities = capabilities
                 }
-			end
+			end,
+            ["lua_ls"] = function()
+                    local lspconfig = require("lspconfig")
+                    lspconfig.lua_ls.setup {
+                        capabilities = capabilities,
+                        settings = {
+                            Lua = {
+                                runtime = { version = "Lua 5.1" },
+                                diagnostics = {
+                                    globals = { "bit", "vim", "it", "describe", "before_each", "after_each" },
+                                }
+                            }
+                        }
+                    }
+                end,
+            ["clangd"] = function ()
+                local lspconfig = require("lspconfig")
+                lspconfig.clangd.setup {
+                    capabilities = capabilities,
+                    cmd = { "clangd" }
+                }
+            end
         }
 
         require("mason-lspconfig").setup_handlers(handlers)
@@ -65,6 +92,7 @@ return {
                 { name = 'buffer' }
             }
         })
+
 
         -- Use cmdline & path source for ':' (if you enabled `native_menu`, this won't work anymore).
  --        cmp.setup.cmdline(':', {
